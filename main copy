@@ -1,0 +1,123 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"math/rand"
+	"os"
+	"sync"
+)
+
+var lim int
+
+const (
+	WriteFour = "divisibleByFour"
+	WriteTree = "divisibleByTree"
+	WriteTwo  = "divisibleByTwo"
+)
+
+func randInt(numbers chan int, wg *sync.WaitGroup, done chan bool) {
+	for lim < 150 {
+		number := rand.Intn(100)
+		numbers <- number
+	}
+	done <- true
+}
+
+func Service(numbers <-chan int, wg *sync.WaitGroup, done chan bool) {
+	chanDivisibleTwo := make(chan int)
+	chanDivisibleThree := make(chan int)
+	chanDivisibleFour := make(chan int)
+
+	go divisibleByTwo(chanDivisibleTwo, wg)
+	go divisibleByThree(chanDivisibleThree, wg)
+	go divisibleByFour(chanDivisibleFour, wg)
+
+	for {
+		select {
+		case <-done:
+			return
+		case num := <-numbers:
+			if num%2 == 0 {
+				chanDivisibleTwo <- num
+			}
+			if num%3 == 0 {
+
+				chanDivisibleThree <- num
+
+			}
+			if num%4 == 0 {
+
+				chanDivisibleFour <- num
+
+			}
+		}
+	}
+
+}
+
+func main() {
+	numbers := make(chan int)
+	done := make(chan bool)
+
+	var wg sync.WaitGroup
+	// wg.Add(1)
+	go randInt(numbers, &wg, done)
+	go Service(numbers, &wg, done)
+	// wg.Wait()
+	<-done
+}
+
+func divisibleByTwo(number chan int, wg *sync.WaitGroup) {
+	var nums []int
+	for num := range number {
+		fmt.Println("Two ", num)
+		nums = append(nums, num)
+		lim++
+		if len(nums) == 50 {
+			return
+		}
+	}
+	// wg.Done()
+}
+
+func divisibleByThree(number chan int, wg *sync.WaitGroup) {
+	var nums []int
+	for num := range number {
+		fmt.Println("Tree ", num)
+		nums = append(nums, num)
+		lim++
+		if len(nums) == 50 {
+			return
+		}
+	}
+	// wg.Done()
+}
+
+func divisibleByFour(number chan int, wg *sync.WaitGroup) {
+	var nums []int
+	for num := range number {
+		fmt.Println("Four ", num)
+		nums = append(nums, num)
+		lim++
+		if len(nums) == 50 {
+			return
+		}
+	}
+	// wg.Done()
+}
+
+func WriteFile(nums []int, c string) {
+	f, err := os.Create("text.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	for _, num := range nums {
+		_, err = f.WriteString(fmt.Sprintf("%d %s\n", num, c))
+		if err != nil {
+			fmt.Printf("error writing string: %v", err)
+		}
+	}
+}
